@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Uforce · Консоль кейсов</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #f5f5f5;
+            color: #1a1a1a;
+            line-height: 1.6;
+        }
+        .container { max-width: 800px; margin: 0 auto; padding: 40px 20px; }
+        h1 { font-size: 28px; margin-bottom: 8px; }
+        .subtitle { color: #666; margin-bottom: 32px; }
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        }
+        .field-label {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #888;
+            margin-bottom: 4px;
+        }
+        .field-value {
+            font-size: 16px;
+            color: #1a1a1a;
+        }
+        .question-box {
+            background: #1a1a1a;
+            color: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 16px;
+        }
+        .question-text { font-size: 18px; font-weight: 500; margin-bottom: 8px; }
+        .question-hint { font-size: 14px; color: #aaa; }
+        .input-area {
+            width: 100%;
+            min-height: 120px;
+            padding: 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            resize: vertical;
+            margin-bottom: 12px;
+        }
+        .input-area:focus {
+            outline: none;
+            border-color: #1a1a1a;
+        }
+        .btn {
+            background: #1a1a1a;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        .btn:hover { opacity: 0.85; }
+        .btn-secondary {
+            background: transparent;
+            color: #1a1a1a;
+            border: 2px solid #1a1a1a;
+        }
+        .btn-group { display: flex; gap: 12px; margin-top: 16px; }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .status-draft { background: #fff3cd; color: #856404; }
+        .status-published { background: #d4edda; color: #155724; }
+        .status-archived { background: #f8d7da; color: #721c24; }
+        .progress-bar {
+            height: 4px;
+            background: #e0e0e0;
+            border-radius: 2px;
+            margin-bottom: 24px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: #1a1a1a;
+            transition: width 0.3s ease;
+        }
+        .mic-btn {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: #ff4444;
+            color: white;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px;
+            transition: transform 0.2s;
+        }
+        .mic-btn:hover { transform: scale(1.05); }
+        .mic-btn.recording { animation: pulse 1.5s infinite; }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 Консоль кейсов</h1>
+        <p class="subtitle">Заполняй кейсы голосом — GPT всё причешет</p>
+
+        <!-- Выбор тимлида -->
+        <div id="step-select" class="card">
+            <div class="field-label">Выберите тимлида</div>
+            <select id="teamlead-select" style="width: 100%; padding: 12px; font-size: 16px; border-radius: 8px; border: 2px solid #e0e0e0;">
+                <option value="">Загрузка...</option>
+            </select>
+            <button class="btn" style="margin-top: 16px;" onclick="startCase()">Начать заполнение</button>
+        </div>
+
+        <!-- Вопросы -->
+        <div id="step-questions" class="hidden">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress" style="width: 0%"></div>
+            </div>
+            <div class="question-box">
+                <div class="question-text" id="question-text">Загрузка...</div>
+                <div class="question-hint" id="question-hint"></div>
+            </div>
+
+            <button class="mic-btn" id="mic-btn" onclick="toggleRecording()">🎤</button>
+            <p style="text-align: center; color: #888; font-size: 14px; margin-bottom: 16px;">
+                Нажми и говори — или введи текст вручную
+            </p>
+
+            <textarea class="input-area" id="answer-input" placeholder="Ваш ответ..."></textarea>
+
+            <div class="btn-group">
+                <button class="btn" onclick="submitAnswer()">Ответить</button>
+                <button class="btn btn-secondary" onclick="skipQuestion()">Пропустить</button>
+            </div>
+        </div>
+
+        <!-- Черновик -->
+        <div id="step-draft" class="hidden">
+            <h2 style="margin-bottom: 16px;">📋 Черновик кейса</h2>
+            <div id="draft-content"></div>
+            <div class="btn-group" style="margin-top: 24px;">
+                <button class="btn" onclick="publishCase()">✅ Опубликовать</button>
+                <button class="btn btn-secondary" onclick="editDraft()">✏️ Редактировать</button>
+            </div>
+        </div>
+
+        <!-- Успех -->
+        <div id="step-success" class="hidden">
+            <div class="card" style="text-align: center; padding: 48px;">
+                <div style="font-size: 48px; margin-bottom: 16px;">🎉</div>
+                <h2>Кейс опубликован!</h2>
+                <p style="color: #666; margin-top: 8px;">Данные отправлены в Google Sheets</p>
+                <button class="btn" style="margin-top: 24px;" onclick="location.reload()">Новый кейс</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = "http://localhost:8000";
+        let currentCaseId = null;
+        let currentQuestion = null;
+        let isRecording = false;
+        let mediaRecorder = null;
+        let audioChunks = [];
+
+        // Загрузка тимлидов
+        async function loadTeamleads() {
+            const res = await fetch(`${API_URL}/teamleads/`);
+            const data = await res.json();
+            const select = document.getElementById("teamlead-select");
+            select.innerHTML = data.map(t => `<option value="${t.id}">${t.name} — ${t.direction}</option>`).join("");
+        }
+
+        // Начать кейс
+        async function startCase() {
+            const teamleadId = document.getElementById("teamlead-select").value;
+            if (!teamleadId) return alert("Выберите тимлида");
+
+            const res = await fetch(`${API_URL}/cases/start`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ teamlead_id: parseInt(teamleadId) })
+            });
+            const data = await res.json();
+            currentCaseId = data.case.id;
+            showQuestion(data);
+        }
+
+        // Показать вопрос
+        function showQuestion(data) {
+            document.getElementById("step-select").classList.add("hidden");
+            document.getElementById("step-questions").classList.remove("hidden");
+
+            if (data.is_complete) {
+                showDraft(data.case);
+                return;
+            }
+
+            currentQuestion = data.next_question;
+            document.getElementById("question-text").textContent = currentQuestion.question;
+            document.getElementById("question-hint").textContent = currentQuestion.hint;
+            document.getElementById("answer-input").value = "";
+
+            // Прогресс
+            const total = 12; // Всего вопросов
+            const answered = Object.keys(data.case.qa_history || {}).length;
+            document.getElementById("progress").style.width = `${(answered / total) * 100}%`;
+        }
+
+        // Отправить ответ
+        async function submitAnswer() {
+            const value = document.getElementById("answer-input").value.trim();
+            if (!value) return;
+
+            const res = await fetch(`${API_URL}/cases/${currentCaseId}/answer`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ field_name: currentQuestion.field, value })
+            });
+            const data = await res.json();
+            showQuestion(data);
+        }
+
+        // Показать черновик
+        function showDraft(caseData) {
+            document.getElementById("step-questions").classList.add("hidden");
+            document.getElementById("step-draft").classList.remove("hidden");
+
+            const fields = [
+                ["Клиент", caseData.client_name],
+                ["Продукт", caseData.product_description],
+                ["NDA", caseData.nda_status],
+                ["Гео", caseData.geo],
+                ["ЦА", caseData.target_audience],
+                ["Период", caseData.period],
+                ["Цель", caseData.goal],
+                ["Инструменты", caseData.tools_channels],
+                ["Команда", caseData.team_actions],
+                ["Метрики", caseData.metrics],
+                ["Результаты", caseData.results],
+                ["Инсайты", caseData.insights],
+            ];
+
+            document.getElementById("draft-content").innerHTML = fields.map(([label, value]) => `
+                <div class="card" style="margin-bottom: 12px;">
+                    <div class="field-label">${label}</div>
+                    <div class="field-value">${value || "—"}</div>
+                </div>
+            `).join("");
+        }
+
+        // Опубликовать
+        async function publishCase() {
+            const res = await fetch(`${API_URL}/cases/${currentCaseId}/publish`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ manual_descriptions: {} })
+            });
+            if (res.ok) {
+                document.getElementById("step-draft").classList.add("hidden");
+                document.getElementById("step-success").classList.remove("hidden");
+            }
+        }
+
+        // Голосовой ввод (Web Speech API)
+        async function toggleRecording() {
+            const btn = document.getElementById("mic-btn");
+            if (!isRecording) {
+                // Начинаем запись
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    mediaRecorder = new MediaRecorder(stream);
+                    audioChunks = [];
+                    mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+                    mediaRecorder.start();
+                    isRecording = true;
+                    btn.classList.add("recording");
+                } catch (err) {
+                    alert("Нет доступа к микрофону. Введите текст вручную.");
+                }
+            } else {
+                // Останавливаем
+                mediaRecorder.stop();
+                isRecording = false;
+                btn.classList.remove("recording");
+
+                mediaRecorder.onstop = async () => {
+                    const audioBlob = new Blob(audioChunks, { type: "audio/mp3" });
+                    // Здесь можно отправить audioBlob на сервер для Whisper
+                    // Пока просто placeholder
+                    alert("Голосовое сообщение записано! (Требуется интеграция с backend)");
+                };
+            }
+        }
+
+        function skipQuestion() {
+            document.getElementById("answer-input").value = "[пропущено]";
+            submitAnswer();
+        }
+
+        function editDraft() {
+            alert("Редактирование — в разработке");
+        }
+
+        // Инициализация
+        loadTeamleads();
+    </script>
+</body>
+</html>

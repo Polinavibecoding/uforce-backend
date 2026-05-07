@@ -1,0 +1,28 @@
+version: "3.8"
+
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      - ./credentials.json:/app/credentials.json
+      - ./data:/app/data
+    restart: unless-stopped
+
+  # Опционально: PostgreSQL для продакшена
+  # db:
+  #   image: postgres:15-alpine
+  #   environment:
+  #     POSTGRES_USER: uforce
+  #     POSTGRES_PASSWORD: uforce_password
+  #     POSTGRES_DB: uforce_cases
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   ports:
+  #     - "5432:5432"
+
+# volumes:
+#   postgres_data:
